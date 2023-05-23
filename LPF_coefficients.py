@@ -10,6 +10,148 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
+import qiskit_tools as qt
+
+def optimize_coeffs_qubits(func, nx, nlab, nintx, ncut0, ncut1, nsig0=4, nsig1=4, norder=1, phase=True):
+
+    def round_sig(xs, sigfig=0):
+        if np.array(xs).ndim==0:
+            xs = np.array([xs])
+        rxs = []
+        for x in xs:
+            if x!=0.:
+                rxs.append(np.round(x, sigfig-int(np.floor(np.log10(np.abs(x))))))
+            else:
+                rxs.append(0.)
+        rxs = np.array(rxs)
+        return rxs
+
+    xmax = np.power(2,nintx) - np.power(2,nintx-nx)
+    xmin = 0.
+    xs = np.linspace(xmin,xmax,2**(nx))
+
+    Nbounds = 2**nlab
+
+    ############ Set piecewise polynomial bounds #################
+
+    bounds_ = np.linspace(xmin, xmax, Nbounds+1)
+
+    bounds__ = []
+    for bound in bounds_:
+        bounds__.append(qt.bin_to_dec(qt.my_binary_repr(bound, n=nx, nint=nintx, phase=False), nint=nintx, phase=False))
+    bounds_ = bounds__
+
+    coeffs = get_bound_coeffs(func, bounds_, norder, reterr=False).T
+    bounds = bounds_[:-1]
+
+    # Round bounds to given significant figures
+    coeffs[0] = round_sig(coeffs[0], nsig0)
+    coeffs[1] = round_sig(coeffs[1], nsig1)
+
+    nlab = int(np.ceil(np.log2(len(bounds))))
+
+    ###################### Playground ################################
+
+    nint1 = qt.get_nint(coeffs[0])
+    nint2 = nintx + nint1
+    nint3 = qt.get_nint(coeffs[1])
+
+    npres1 = qt.get_npres(coeffs[0])
+    npres2 = (nx - nintx) + npres1
+    npres3 = qt.get_npres(coeffs[1])
+
+    n1 = npres1 + nint1 + 1
+    n2 = npres2 + nint2 + 1
+    n3 = npres3 + nint3 + 1
+
+    ########### round gradients #######################
+
+    rcoeffs = []
+    for coeff in coeffs[0]:
+        bitstr = qt.my_binary_repr(coeff, 100, nint=nint1, phase=True)
+        if bitstr[ncut0]=='0':
+            rem = 0.
+        else:
+            rem = 2**(-(ncut0-nint1-1))
+        if bitstr[0]=='1':
+            rem = rem*-1
+        rcoeff1 = qt.bin_to_dec(bitstr[:ncut0], nint=nint1, phase=True)+rem
+        rcoeff2 = qt.bin_to_dec(bitstr[:ncut0], nint=nint1, phase=True)
+        rcoeff = np.array([rcoeff1,rcoeff2])[np.argmin(np.abs([rcoeff1-coeff,rcoeff2-coeff]))]
+        rcoeffs.append(rcoeff)
+    rcoeffs = np.array(rcoeffs)
+    coeffs[0] = rcoeffs
+
+    fdifs = func(xs) - qt.piecewise_poly(xs, np.array([coeffs[0],np.zeros(len(coeffs[1]))]).T, bounds_)
+    coeffs_ = []
+    bounds__ = bounds_
+    bounds__[-1] = np.inf
+    for i in np.arange(len(bounds__))[:-1]:
+        coeffs_.append(np.mean(fdifs[np.greater_equal(xs,bounds__[i])&np.greater(bounds__[i+1],xs)]))
+    coeffs[1] = np.array(coeffs_)
+    coeffs[1] = round_sig(coeffs[1], nsig1)
+    nint3 = qt.get_nint(coeffs[1])
+    npres3 = qt.get_npres(coeffs[1])
+    n3 = npres3 + nint3 + 1
+
+    rcoeffs = []
+    for coeff in coeffs[1]:
+        bitstr = qt.my_binary_repr(coeff, 100, nint=nint3, phase=True)
+        if bitstr[ncut1]=='0':
+            rem = 0.
+        else:
+            rem = 2**(-(ncut1-nint3-1))
+        if bitstr[0]=='1':
+            rem = rem*-1
+        rcoeff1 = qt.bin_to_dec(bitstr[:ncut1], nint=nint3, phase=True)+rem
+        rcoeff2 = qt.bin_to_dec(bitstr[:ncut1], nint=nint3, phase=True)
+        rcoeff = np.array([rcoeff1,rcoeff2])[np.argmin(np.abs([rcoeff1-coeff,rcoeff2-coeff]))]
+        rcoeffs.append(rcoeff)
+    rcoeffs = np.array(rcoeffs)
+
+    coeffs[1] = rcoeffs
+
+    ############## and repeat ########################
+
+    A1x = qt.piecewise_poly(xs, np.array([coeffs[0],np.zeros(len(coeffs[1]))]).T, bounds_)
+    A1x_A0 = qt.piecewise_poly(xs, coeffs.T, bounds_)
+    coeffs_old = np.copy(coeffs)
+
+    coeffs[0] = np.array([*coeffs[0,2**(nlab-1)+1:],*coeffs[0,:2**(nlab-1)+1]])
+    coeffs[1] = np.array([*coeffs[1,2**(nlab-1)+1:],*coeffs[1,:2**(nlab-1)+1]])
+
+    coeffs[0] = np.array([*coeffs[0,-2:],*coeffs[0,:-2]])
+    coeffs[1] = np.array([*coeffs[1,-2:],*coeffs[1,:-2]])
+
+    nint1 = qt.get_nint(coeffs[0])
+    nint2 = nintx + nint1# - 1
+    nint3 = qt.get_nint(coeffs[1])
+
+    npres1 = ncut0-nint1
+    npres2 = (nx - nintx) + npres1
+    npres3 = ncut1-nint2
+
+    n1 = npres1 + nint1 + 1
+    n2 = npres2 + nint2 + 1
+    n3 = npres3 + nint3 + 1
+
+    while np.min(A1x)>qt.bin_to_dec('1'+'0'*(n2-3)+'1', nint=nint2-1, phase=phase) and np.max(A1x)<qt.bin_to_dec('0'+'1'*(n2-2)+'1', nint=nint2-1, phase=phase):
+        nint2 = nint2 - 1
+        n2 = npres2+nint2+1
+
+    nint2 = nint2 + 1
+    n2 = npres2 + nint2 + 1
+
+    n = n2
+    nc = n1
+
+    nintcs = np.array([[nint1,nint3]])
+    nint = nint2
+
+    if 16*(2**(nc+n+nx+nlab))/2**20>7568:
+        raise ValueError('Too many qubits!',nc+n+nx+nlab)
+
+    return n, nc, nlab, nint, nintcs, coeffs, bounds
 
 def get_bound_coeffs(func, bounds, norder, reterr=False):
     if np.array(bounds).ndim==0:

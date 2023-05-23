@@ -1,10 +1,9 @@
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer, IBMQ
 import qiskit_tools as qt
-from remez import get_bound_coeffs
+from LPF_coefficients import get_bound_coeffs, optimize_coeffs_qubits
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib, argparse
-import plot_Psif_sim as fns
 import plot_sim as plsim
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
@@ -61,7 +60,7 @@ def sim_Af_GR(nx, nlab, ncut0, ncut1, nsig0, nsig1, statename='./state_vectors/p
         out = ((eps1*(3./128))*((np.pi*Mc*x)**(-5./3))*( 1.+ (20./9)*((743./336)+(11./4)*eta)*(np.pi*Mt*x)**(2./3) -4.*(4.*np.pi - beta)*(np.pi*Mt*x) + 10.*eps2*((3058673./1016064) + (eta*5429./1008) + (617*(eta**2)/144) - sig)*(np.pi*Mt*x)**(4./3)) + 2.*np.pi*x*DT)/(2.*np.pi*factor)
         return out
 
-    n, nc, nlab, nint, nintcs, coeffs, bounds = fns.optimize_coeffs_qubits(f_x, nx, nlab, nintx, ncut0, ncut1, nsig0=nsig0, nsig1=nsig1)
+    n, nc, nlab, nint, nintcs, coeffs, bounds = optimize_coeffs_qubits(f_x, nx, nlab, nintx, ncut0, ncut1, nsig0=nsig0, nsig1=nsig1)
 
     print('Qubits:', nx, n, nc, nlab)
     print('Integer qubits:', nintx, nint, nintcs[0,0], nintcs[0,1])
@@ -83,6 +82,11 @@ def sim_Af_GR(nx, nlab, ncut0, ncut1, nsig0, nsig1, statename='./state_vectors/p
 
     GR_gate = qt.Grover_Rudolph_func(circ, q_x, q_ycoff[:(nc+n)//2], q_lab, q_ycoff[(nc+n)//2:2*((nc+n)//2)], amplitude(nx)**2, mtol=4, mmax=None, wrap=True)
     circ.append(GR_gate, [*q_x, *q_ycoff[:(nc+n)//2], *q_lab, *q_ycoff[(nc+n)//2:2*((nc+n)//2)]]);
+
+    if list(dict(circ.decompose(reps=10).count_ops()).keys())!=['u', 'cx']:
+        raise ValueError('Cannot decompose circuit into u and CX gates.')
+
+    print('CNOT gate count:',dict(circ.decompose(reps=10).count_ops())['cx'])
 
     backend = Aer.get_backend('statevector_simulator')
     job = execute(circ, backend)

@@ -1,6 +1,5 @@
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer, IBMQ
 import qiskit_tools as qt
-from remez import get_bound_coeffs
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib, argparse

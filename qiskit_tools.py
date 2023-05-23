@@ -10,7 +10,7 @@ from qiskit.circuit.library.boolean_logic import OR
 from qiskit.quantum_info import random_unitary
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.passes import Unroller
-from remez import get_bound_coeffs
+from LPF_coefficients import get_bound_coeffs
 import gate_cost as gc
 import itertools as it
 import numpy as np
