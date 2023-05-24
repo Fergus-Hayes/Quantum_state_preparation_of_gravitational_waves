@@ -208,4 +208,4 @@ if __name__ == '__main__':
 
     opt = parser.parse_args()
 
-    QGAN_Af(opt.nx, fmin=opt.fmin, fmax=opt.fmax, rseed=opt.rseed, reps=opt.reps, n_epochs=opt.nepochs, shots=opt.shots, lr=opt.lr, b1=opt.b1, b2=opt.b2)
+    QGAN_Af(int(opt.nx), fmin=float(opt.fmin), fmax=float(opt.fmax), rseed=int(opt.rseed), reps=int(opt.reps), n_epochs=int(opt.nepochs), shots=int(opt.shots), lr=float(opt.lr), b1=float(opt.b1), b2=float(opt.b2))
