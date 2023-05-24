@@ -4,7 +4,11 @@ A quantum circuit capable of amplitude encoding gravitational wave inspiral wave
 
 ## Installation
 
-``` pip3 install qiskit matplotlib ```
+``` pip3 install qiskit qiskit_machine_learning matplotlib torch ```
+
+or use the `requirements.txt' file through:
+
+``` pip3 install -r requirements.txt ```
 
 ## Reproducing results
 
