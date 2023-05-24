@@ -1,4 +1,4 @@
-# Quantum state_preparation of gravitational waves
+# Quantum state preparation of gravitational waves
 
 A quantum circuit capable of amplitude encoding gravitational wave inspiral waveforms using quantum arithmetic and hybrid quantum-classical machine learning methods.
 
