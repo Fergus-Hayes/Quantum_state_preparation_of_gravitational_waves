@@ -4,17 +4,17 @@ A quantum circuit capable of amplitude encoding gravitational wave inspiral wave
 
 ## Installation
 
-``` pip3 install qiskit ```
+``` pip3 install qiskit matplotlib ```
 
 ## Reproducing results
 
 To train the parameterised quantum circuit of 12 layers using the generative adversarial network run:
 
-``` python QGAN --nepochs 1450 --reps 12 ```
+``` python QGAN_Af.py --nepochs 1450 --reps 12 ```
 
 And similarly for 20 layers:
 
-``` python QGAN --nepochs 2260 --reps 20 ```
+``` python QGAN_Af.py --nepochs 2260 --reps 20 ```
 
 Simulating the amplitude preparation step using the Grover-Rudolph algorithm is done through:
 
